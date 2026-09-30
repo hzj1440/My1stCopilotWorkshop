@@ -21,6 +21,7 @@ let todos = loadTodos();
 
 // 目前的篩選條件:'all' | 'active' | 'completed'
 let currentFilter = 'all';
+let filterNotice = '';
 
 // ---------- 資料存取 ----------
 
@@ -130,8 +131,8 @@ function render() {
   });
 
   // 目前篩選結果是空的時候顯示提示文字
-  emptyState.hidden = visibleTodos.length > 0;
-  emptyState.textContent = getEmptyMessage();
+  emptyState.hidden = visibleTodos.length > 0 && !filterNotice;
+  emptyState.textContent = filterNotice || getEmptyMessage();
 
   // 更新未完成數量(不受篩選影響,永遠是整體數量)
   const remaining = todos.filter((todo) => !todo.completed).length;
@@ -147,6 +148,7 @@ function createId() {
 
 /** 新增一筆待辦 */
 function addTodo(text) {
+  filterNotice = '';
   todos.push({
     id: createId(),
     text,
@@ -158,8 +160,19 @@ function addTodo(text) {
 
 /** 切換某一筆待辦的完成狀態 */
 function toggleTodo(id) {
+  const todo = todos.find((currentTodo) => currentTodo.id === id);
+  if (!todo) return;
+
+  const nextCompleted = !todo.completed;
+  const leavesCurrentFilter =
+    (currentFilter === 'completed' && !nextCompleted) ||
+    (currentFilter === 'active' && nextCompleted);
+  filterNotice = leavesCurrentFilter
+    ? '此項目只是被目前的篩選條件隱藏，並未刪除；切換至「全部」即可查看。'
+    : '';
+
   todos = todos.map((todo) =>
-    todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    todo.id === id ? { ...todo, completed: nextCompleted } : todo
   );
   saveTodos();
   render();
@@ -167,6 +180,7 @@ function toggleTodo(id) {
 
 /** 刪除某一筆待辦 */
 function deleteTodo(id) {
+  filterNotice = '';
   todos = todos.filter((todo) => todo.id !== id);
   saveTodos();
   render();
@@ -175,6 +189,7 @@ function deleteTodo(id) {
 /** 切換篩選條件 */
 function setFilter(filter) {
   currentFilter = filter;
+  filterNotice = '';
 
   filterButtons.forEach((button) => {
     const isActive = button.dataset.filter === filter;
